@@ -1,0 +1,31 @@
+{
+    "folders": [
+        {
+            "path": "."
+        }
+    ],
+    "extensions": {
+        "recommendations": [
+            "ms-vscode.go"
+        ]
+    },
+    "settings": {
+        "go.buildOnSave": "workspace",
+        "[go]": {
+            "editor.tabSize": 4,
+            "editor.detectIndentation": false,
+            "editor.snippetSuggestions": "none",
+            "editor.formatOnSave": true,
+            "editor.codeActionsOnSave": {
+                "source.organizeImports": true
+            }
+        },
+        "go.autocompleteUnimportedPackages": true,
+        "go.useLanguageServer": true,
+        "files.insertFinalNewline": true,
+        "files.trimTrailingWhitespace": true,
+        "files.trimFinalNewlines": true,
+        "files.eol": "\n",
+        "editor.renderWhitespace": "boundary"
+    }
+}
