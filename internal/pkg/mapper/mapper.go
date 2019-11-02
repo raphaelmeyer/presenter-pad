@@ -99,7 +99,18 @@ func processEvent(device *evdev.InputDevice, keyboard uinput.Keyboard) error {
 
 	for _, event := range events {
 		if int(event.Type) == evdev.EV_KEY {
-			log.Printf("EV_KEY %d %d", int(event.Code), int(event.Value))
+			if event.Value == 1 {
+				switch int(event.Code) {
+				case evdev.BTN_A, evdev.BTN_TR, evdev.BTN_THUMB, evdev.BTN_PINKIE:
+					keyboard.KeyPress(uinput.KeyRight)
+				case evdev.BTN_B, evdev.BTN_THUMB2:
+					keyboard.KeyPress(uinput.KeyDown)
+				case evdev.BTN_X, evdev.BTN_TRIGGER:
+					keyboard.KeyPress(uinput.KeyUp)
+				case evdev.BTN_Y, evdev.BTN_TL, evdev.BTN_TOP, evdev.BTN_TOP2:
+					keyboard.KeyPress(uinput.KeyLeft)
+				}
+			}
 		}
 		if int(event.Type) == evdev.EV_ABS {
 			switch int(event.Code) {
