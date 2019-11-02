@@ -98,6 +98,9 @@ func processEvent(device *evdev.InputDevice, keyboard uinput.Keyboard) error {
 	}
 
 	for _, event := range events {
+		if int(event.Type) == evdev.EV_KEY {
+			log.Printf("EV_KEY %d %d", int(event.Code), int(event.Value))
+		}
 		if int(event.Type) == evdev.EV_ABS {
 			switch int(event.Code) {
 			case evdev.ABS_X:
