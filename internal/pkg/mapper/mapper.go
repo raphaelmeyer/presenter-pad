@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
 	"github.com/bendahl/uinput"
 	evdev "github.com/gvalkov/golang-evdev"
@@ -31,19 +32,6 @@ func ListDevices() error {
 
 // Run starts the gamepad to keystroke mapper
 func Run(deviceName string) error {
-
-	devnode, err := findDevice(deviceName)
-	if err != nil {
-		return err
-	}
-
-	log.Print(devnode)
-
-	device, err := evdev.Open(devnode)
-	if err != nil {
-		return err
-	}
-
 	keyboard, err := uinput.CreateKeyboard("/dev/uinput", []byte("mapper-kbd"))
 	if err != nil {
 		return err
@@ -52,55 +40,83 @@ func Run(deviceName string) error {
 	defer keyboard.Close()
 
 	for {
-		events, err := device.Read()
+		device, err := connectDevice(deviceName)
 		if err != nil {
 			return err
 		}
-		for _, event := range events {
-			if int(event.Type) == evdev.EV_ABS {
-				switch int(event.Code) {
-				case evdev.ABS_X:
-					switch int(event.Value) {
-					case 0:
-						keyboard.KeyPress(uinput.KeyLeft)
-					case 255:
-						keyboard.KeyPress(uinput.KeyRight)
-					}
-				case evdev.ABS_Y:
-					switch int(event.Value) {
-					case 0:
-						keyboard.KeyPress(uinput.KeyUp)
-					case 255:
-						keyboard.KeyPress(uinput.KeyDown)
-					}
-				}
+
+		for {
+			err := processEvent(device, keyboard)
+			if err != nil {
+				log.Printf("Error: %v", err)
+				break
 			}
 		}
 	}
 }
 
 func findDevice(name string) (string, error) {
-	devices, err := evdev.ListInputDevices()
+	log.Println("looking for device ...")
+	for {
+		devices, err := evdev.ListInputDevices()
+		if err != nil {
+			return "", err
+		}
+
+		for _, device := range devices {
+			if len(name) > 0 {
+				if strings.TrimSpace(device.Name) == name {
+					log.Printf("found device %q\n", device.Name)
+					return device.Fn, nil
+				}
+			} else {
+				lower := strings.ToLower(device.Name)
+				if strings.Contains(lower, "gamepad") {
+					log.Printf("found device %q\n", device.Name)
+					return device.Fn, nil
+				}
+			}
+		}
+		time.Sleep(time.Second)
+	}
+}
+
+func connectDevice(deviceName string) (*evdev.InputDevice, error) {
+	devnode, err := findDevice(deviceName)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	if len(name) > 0 {
-		for _, device := range devices {
-			if strings.TrimSpace(device.Name) == name {
-				log.Printf("found device %q\n", device.Name)
-				return device.Fn, nil
-			}
-		}
-	} else {
-		for _, device := range devices {
-			lower := strings.ToLower(device.Name)
-			if strings.Contains(lower, "gamepad") {
-				log.Printf("found device %q\n", device.Name)
-				return device.Fn, nil
+	log.Printf("connect to %q\n", devnode)
+	return evdev.Open(devnode)
+}
+
+func processEvent(device *evdev.InputDevice, keyboard uinput.Keyboard) error {
+	events, err := device.Read()
+	if err != nil {
+		return err
+	}
+
+	for _, event := range events {
+		if int(event.Type) == evdev.EV_ABS {
+			switch int(event.Code) {
+			case evdev.ABS_X:
+				switch int(event.Value) {
+				case 0:
+					keyboard.KeyPress(uinput.KeyLeft)
+				case 255:
+					keyboard.KeyPress(uinput.KeyRight)
+				}
+			case evdev.ABS_Y:
+				switch int(event.Value) {
+				case 0:
+					keyboard.KeyPress(uinput.KeyUp)
+				case 255:
+					keyboard.KeyPress(uinput.KeyDown)
+				}
 			}
 		}
 	}
 
-	return "", fmt.Errorf("device not found")
+	return nil
 }
