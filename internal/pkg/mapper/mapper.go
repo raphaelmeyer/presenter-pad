@@ -3,12 +3,18 @@ package mapper
 import (
 	"fmt"
 	"log"
+	"os/exec"
 	"strings"
 	"time"
 
 	"github.com/bendahl/uinput"
 	evdev "github.com/gvalkov/golang-evdev"
 )
+
+type shutdown struct {
+	initiate time.Time
+	count    int
+}
 
 // ListDevices lists all input devices
 func ListDevices() error {
@@ -45,8 +51,10 @@ func Run(deviceName string) error {
 			return err
 		}
 
+		s := &shutdown{time.Now(), 0}
+
 		for {
-			err := processEvent(device, keyboard)
+			err := processEvent(device, keyboard, s)
 			if err != nil {
 				log.Printf("Error: %v", err)
 				break
@@ -91,7 +99,7 @@ func connectDevice(deviceName string) (*evdev.InputDevice, error) {
 	return evdev.Open(devnode)
 }
 
-func processEvent(device *evdev.InputDevice, keyboard uinput.Keyboard) error {
+func processEvent(device *evdev.InputDevice, keyboard uinput.Keyboard, s *shutdown) error {
 	events, err := device.Read()
 	if err != nil {
 		return err
@@ -109,6 +117,8 @@ func processEvent(device *evdev.InputDevice, keyboard uinput.Keyboard) error {
 					keyboard.KeyPress(uinput.KeyUp)
 				case evdev.BTN_Y, evdev.BTN_TL, evdev.BTN_TOP, evdev.BTN_TOP2:
 					keyboard.KeyPress(uinput.KeyLeft)
+				case evdev.BTN_START:
+					s.trigger()
 				}
 			}
 		}
@@ -133,4 +143,20 @@ func processEvent(device *evdev.InputDevice, keyboard uinput.Keyboard) error {
 	}
 
 	return nil
+}
+
+func (s *shutdown) trigger() {
+	if time.Since(s.initiate) < time.Second {
+		s.count++
+		if s.count >= 5 {
+			cmd := exec.Command("systemctl", "poweroff")
+			err := cmd.Start()
+			if err != nil {
+				log.Printf("Error: %v", err)
+			}
+		}
+	} else {
+		s.initiate = time.Now()
+		s.count = 0
+	}
 }
